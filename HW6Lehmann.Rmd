@@ -1,0 +1,294 @@
+---
+title: "HW6Lehmann"
+author: "Ben Lehmann"
+date: "2023-10-05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r}
+insurance=read.csv("~/DS303/insurance.csv")
+new_cop = insurance
+insurance$gender = as.factor(insurance$gender)
+insurance$region = as.factor(insurance$region)
+insurance$smoker = as.factor(insurance$smoker)
+insurance$gender <- ifelse(insurance$gender == "male", 1, 2)
+
+
+```
+
+
+
+```{r}
+males=insurance[insurance$gender=='1',]
+females=insurance[insurance$gender=='2',]
+```
+
+
+
+```{r}
+fit_males = fit_males = lm(charges ~ age + bmi + age:gender + bmi:gender, data = males)
+fit_females = lm(charges ~ age + bmi + age:gender + bmi:gender, data = females)
+```
+
+
+```{r}
+summary(fit_males)
+summary(fit_females)
+```
+
+
+```{r}
+fit_mod <- lm(charges~age+bmi+gender+age*gender+bmi*gender,data=insurance)
+
+```
+
+c)
+
+```{r}
+without_interactions = lm(charges ~ age + bmi + gender, data = insurance)
+anova_res <- anova(without_interactions, fit_mod)
+p_val <- anova_res$"Pr(>F)"[2]
+if (p_val < 0.05) {
+  print("The Interaction terms have great significance and should be added.")
+} else {
+  print("The Interaction terms do not have great significant and should not be added.")
+}
+```
+
+I believe using the P-test could help me determine whether or not to use such variables, we can use ANOVA.
+
+##Q2
+
+a). Multicollinearity is a problem because of unstable coefficients,The coefficients for these variables can become unstable to changes in the data, making it hard to interpret true impact.The model can become unstable, small changes in the data or changing variables can lead to different results
+
+b).
+```{r}
+set.seed(42)
+x1 = runif(100)
+x2 = 0.8*x1 + rnorm(100, 0, 0.1)
+correlation_value = cor(x1, x2)
+Y = 3 + 2 * x1 + 4 * x2 +rnorm(100, 0, 4)
+print(correlation_value)
+```
+
+
+c).
+```{r}
+
+train_i = sample(1:100, 80)
+train = data.frame(Y = Y[train_i], x1 = x1[train_i], x2 = x2[train_i])
+test = data.frame(Y = Y[-train_i], x1 = x1[-train_i], x2 = x2[-train_i])
+
+```
+
+
+
+
+```{r}
+model <- lm(Y ~ x1 + x2, data = train)
+
+# Predict on the test set
+test_predictions <- predict(model, newdata = test)
+
+# Calculate the test MSE
+test_mse <- mean((test_predictions - test$Y)^2)
+print(test_mse)
+```
+
+
+d).
+
+```{r}
+test_mses = numeric(2500)
+
+for (i in 1:2500) {
+  new_y = 3 + 2 * x1 + 4 * x2+rnorm(100, 0, 4)
+  
+  train_s = sample(1:100, 80)
+  training = data.frame(Y = Y[train_s], x1 = x1[train_s], x2 = x2[train_s])
+  testing = data.frame(Y = Y[-train_s], x1 = x1[-train_s], x2 = x2[-train_s])
+  
+  # Fit a linear regression model
+  mlin = lm(Y ~ x1 + x2, data = training)
+  
+  # Predict on the test set
+  predictions = predict(mlin, newdata = testing)
+  
+  # Calculate the test MSE and store it
+  test_mse = mean((testing$Y - predictions)^2)
+  test_mses[i] = test_mse
+}
+mean_test_mse = mean(test_mses)
+mean_test_mse
+```
+
+```{r}
+hist(test_mses)
+```
+
+
+e).
+
+```{r}
+set.seed(24)
+new_x1 = runif(100)
+new_x2 = rnorm(100,0,1)
+Y_1 = 3 + 2 * new_x1 + 4 * new_x2 +rnorm(100, 0, 4)
+new_correlation_value = cor(new_x1, new_x2)
+print(new_correlation_value)
+```
+
+f).
+
+
+```{r}
+testing_mses = numeric(2500)
+
+for (i in 1:2500) {
+  new_y_v = 3 + 2 * new_x1 + 4 * new_x2+rnorm(100, 0, 4)
+  
+  train_smple = sample(1:100, 80)
+  training_dum = data.frame(Y_2 = new_y_v[train_s], n_x1 = new_x1[train_s], n_x2 =new_x2[train_s])
+  testing_dum = data.frame(Y_2 = new_y_v[-train_s], n_x1 = new_x1[-train_s],n_x2 = new_x2[-train_s])
+  
+  # Fit a linear regression model
+  mlin2 = lm(Y_2 ~ n_x1 + n_x2, data = training_dum)
+  
+  # Predict on the test set
+  new_predictions = predict(mlin2, newdata = testing_dum)
+  
+  # Calculate the test MSE and store it
+  test_mse_new = mean((testing$Y - new_predictions)^2)
+  testing_mses[i] = test_mse_new
+}
+new_mean_test_mse = mean(testing_mses)
+new_mean_test_mse
+```
+
+
+```{r}
+hist(testing_mses)
+```
+
+g). I would say there is a problem because with the 2nd model because of a higher test MSE. But models with lower test MSE would have less problems with predictions.
+
+
+
+##Q3
+
+```{r}
+library(ISLR2)
+library(glmnet)
+
+dat = College
+```
+
+
+
+```{r}
+set.seed(12)
+x_v = model.matrix(Apps~.,data = dat)[,-1]
+y_v = dat$Apps
+train_data = sample(1:nrow(x_v),nrow(x_v)/2)
+test_data = (-train_data)
+Y_test = y_v[test_data]
+```
+
+
+
+b).
+
+```{r}
+grid = 10^seq(10, -2, length = 100)
+ridge_mod1 = glmnet(x_v[train_data,], y_v[train_data], alpha = 0, lambda = grid)
+
+```
+
+
+Scaling is necessary for regularized models because it makes sure all predictor variables have the same scale and are equal and not one variable has more weight in the regularization.
+
+
+
+c).
+```{r}
+cv_res = cv.glmnet(x_v[train_data,],y_v[train_data],alpha = 0, lambda = grid, nfolds = 5) 
+plot(cv_res)
+
+```
+
+```{r}
+
+best_lambda = cv_res$lambda.min
+best_lambda
+```
+
+
+
+d).
+```{r}
+ridge_coef <- sqrt(sum(coef(ridge_mod1, s = best_lambda)[-1]^2))
+cat("L2 Norm of Ridge Coefficients:", ridge_coef, "\n")
+```
+
+
+e).
+
+
+```{r}
+ridge_predictions <- predict(ridge_mod1, s = best_lambda, newx = x_v[test_data,])
+mean((ridge_predictions-Y_test)^2)
+```
+
+
+
+f).
+
+```{r}
+grid_las = 10^seq(10, -2, length = 100)
+las_mod = glmnet(x_v[train_data,], y_v[train_data], alpha = 1, lambda = grid_las)
+
+```
+
+
+
+```{r}
+cv_las = cv.glmnet(x_v[train_data,],y_v[train_data],alpha = 1, lambda = grid_las, nfolds = 5) 
+plot(cv_las)
+```
+
+
+```{r}
+best_las_lam = cv_las$lambda.min
+best_las_lam
+```
+
+
+g).
+
+```{r}
+lasso_coef_norm = sum(abs(coef(las_mod, s = best_las_lam)[-1]))
+cat("L1 Norm of Lasso Coefficients:", lasso_coef_norm, "\n")
+```
+
+
+
+h).
+
+```{r}
+mod_las_1 = glmnet(x_v[train_data,],y_v[train_data],alpha = 1, lambda = grid_las) 
+lasso_pred = predict(mod_las_1,x_v[test_data,],s=best_las_lam)
+test_mse_lasso = mean((lasso_pred - Y_test)^2)
+cat("Test MSE for Lasso Regression:", test_mse_lasso, "\n")
+```
+
+
+I).
+We can compare the test MSE values for ridge and lasso regression to look at their predictive performance. Lower test MSE means better predictive accuracy. I see there is a difference.
+
