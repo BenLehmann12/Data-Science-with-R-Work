@@ -1,0 +1,236 @@
+---
+title: "Hw5Lehmann"
+author: "Ben Lehmann"
+date: "2023-09-26"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(ISLR2)
+library(leaps)
+
+bos <- Boston
+head(bos)
+str(Boston)
+```
+
+
+
+```{r}
+correlations <- cor(Boston)
+cor_with_medv <- correlations["medv", ]
+significant_predictors <- names(cor_with_medv[abs(cor_with_medv) > 0.5])
+significant_predictors
+```
+
+
+```{r}
+reg_fit=regsubsets(medv~.,data = Boston, nbest=1,nvmax = 13)
+reg_summary = summary(reg_fit)
+reg_summary
+```
+
+
+```{r}
+n = dim(Boston)[1]
+p = rowSums(reg_summary$which)
+adjr2 = reg_summary$adjr2
+cp = reg_summary$cp
+rss = reg_summary$rss
+aic = n*log(rss/n) + 2*p
+bic = n*log(rss/n) + (p)*log(n)
+
+cbind(p,adjr2,cp,rss,aic,bic)
+```
+
+```{r}
+which.min(aic)
+which.min(bic)
+which.min(cp)
+which.min(adjr2)
+```
+
+
+```{r}
+new_mod = lm(medv~lstat+rm+crim+zn+chas+nox+dis+rad+tax+ptratio,data = Boston)
+summary(new_mod)
+```
+
+```{r}
+pred <- predict(new_mod, newdata = Boston)
+rmse <- sqrt(mean((pred - Boston$medv)^2))
+rsquared <- cor(pred, Boston$medv)^2
+
+rmse
+rsquared
+```
+
+
+
+b).
+I decided to use two different ways, I first used correlation analysis, to use
+any variables that have a high correlation with MEDV. Because having high correlated variables
+can help me decide which variables to use. I decided to use anything with correlation above 0.5.
+The one I decided to use is finding the best model for MEDV. The scores helped me pick the best model.
+
+
+c). I decided to use metrics such as AIC, BIC, RSQUARED, RMSE, to help determine the quality of the model and with I decided to try the different models from 1 to 12, and I noticed 10 to 11 had a sweet spot while some have had realy high AIC and BIC which I do not want.
+
+d).The assumptions of linear regression include linearity, independence,and normality of errors. I decided to use
+scatter plots to help me determine the linearity of the models, and I graphed between two variables.
+
+e).I did not identify potential issues like multicollinearity, outliers. I could have used VIF to detect multicollinearity and identify and address any kind of outliers.
+
+##Q2
+
+a).The Best subset selection is more likely to have the smallest training MSE for a given k model. This is because it explores all kinds of combinations of all predictors and selects the model that minimizes the training MSE.
+
+b).The best subset selection might have the smallest test MSE because it takes into account more models than the other methods. However, other methods might also choose a model with smaller test MSE, so it could be more difficult to pick.
+
+
+c).
+```{r}
+library(ISLR2)
+set.seed(123)  # Set a seed for reproducibility
+n_v <- nrow(College)
+train_indices <- sample(1:n_v, 0.9 * n_v)  # 90% for training
+
+# Create the training and test datasets
+train_data <- College[train_indices, ]
+test_data <- College[-train_indices, ]
+```
+
+
+
+```{r}
+head(College)
+```
+
+
+
+```{r}
+regfit.fwd = regsubsets(Apps~.,data=test_data,nvmax=19, method="forward")
+regfit.bwd = regsubsets(Apps~.,data=test_data,nvmax=19, method="backward")
+```
+
+
+
+```{r}
+reg_fwd_sum = summary(regfit.fwd)
+n = dim(College)[1]
+p = rowSums(reg_fwd_sum$which) #number of predictors + intercept in the model 
+adjr2 = reg_fwd_sum$adjr2
+cp = reg_fwd_sum$cp
+rss = reg_fwd_sum$rss
+AIC = n*log(rss/n) + 2*(p)
+BIC = n*log(rss/n) + (p)*log(n)
+
+cbind(p,AIC)
+```
+
+
+```{r}
+test_mat = model.matrix (Apps~., data = test_data)
+val_errors = rep(NA,17)
+for(i in 1:17){
+    
+    # Extract the vector of predictors in the best fit model on i predictors
+    coefi = coef(regfit.fwd, id = i)
+    
+    # Make predictions using matrix multiplication of the test matirx and the coefficients vector
+    pred = test_mat[,names(coefi)]%*%coefi
+    
+    # Calculate the MSE
+    val_errors[i] = mean((test_data$Apps-pred)^2)
+}
+cbind(val_errors)
+```
+
+
+##Q3
+The strange aspect of the given linear regression output is the p-values associated with the coefficients of the predictor variables x1 and x2. Specifically, the p-values for both x1 and x2 are relatively high, these coefficients are not significant. This is unusual in the context of linear regression because you would expect to see smaller p-values
+
+
+##Q4
+a).
+
+```{r}
+library(ISLR2)
+library(dplyr)
+dat = Credit
+str(dat)
+dat$Own = factor(dat$Own)
+dat$Married = factor(dat$Married)
+dat$Region = factor(dat$Region)
+dat$Student = factor(dat$Student)
+
+```
+
+
+b).
+
+```{r}
+fit <- lm(Balance ~ Income + Student, data = dat)
+summary(fit)
+```
+
+c).
+
+```{r}
+y_student = dat[dat$Student == 'Yes',]
+n_student = dat[dat$Student == 'No',]
+
+```
+
+
+
+```{r}
+y_mod = lm(Balance ~ Income,data = y_student)
+n_mod = lm(Balance ~ Income, data = n_student)
+
+summary(y_mod)
+summary(n_mod)
+```
+
+I could not get this done, I keep getting errors. I factored Students in the first part.
+
+d).
+The regression coefficient related to "Income" represents the change in the average credit card balance for a one-unit change in income, holding all other variables constant
+
+e).
+```{r}
+plot(Balance ~ Income, data = y_student, xlab = "Income", ylab = "Balance")
+abline(y_mod, col = "red")
+```
+
+
+```{r}
+plot(Balance ~ Income, data = n_student, xlab = "Income", ylab = "Balance")
+abline(n_mod, col = "red")
+```
+
+
+f).
+
+```{r}
+fitted_y_mod = lm(Balance ~ Income + Student + Income:Student, data=Credit)
+summary(fitted_y_mod)
+```
+
+g).
+
+In the model with the interaction term, B1 represents the change in the average balance for a one-unit change in income for non-students, while B3 represents the change in the balance associated with income for students 
+
+
+
+
