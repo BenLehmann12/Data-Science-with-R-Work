@@ -1,0 +1,317 @@
+---
+title: "HW7Lehmann"
+author: "Ben Lehmann"
+date: "2023-10-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Q1
+
+Lasso wants to simplify the model by setting coefficients to 0, which means it ignores certain features.
+Ridge regression,doesn't set coefficients to 0, It tries to make all coefficients as small as possible but never eliminate any of them.
+
+b).
+
+a).
+iii
+When lambda is increased, there is more weight minimizing Bj2 term which means
+the overall fit for the training data will keep going down.The model is becoming less flexible
+
+b).
+ii
+As lambda increases, the reduction in variance will outweigh the penalty of shrinking the B0 towards zero. This will generally mean that the test MSE will decrease.
+
+c).
+iv
+Increasing lambda decreases the flexibility because the B are shrunk towards zero, reducing the variance
+
+d).
+iii
+increasing the lambda will increase the bias
+
+e).
+v
+It remains constant regardless of model flexibility, because irreducible error is model independent
+
+##Q2
+```{r}
+library(ISLR2)
+Hitters = na.omit(Hitters)
+n = nrow(Hitters) 
+x = model.matrix(Salary ~., data=Hitters)[,-1] 
+Y = Hitters$Salary
+set.seed(1)
+train = sample(1:nrow(x), nrow(x)/2)
+test = (-train)
+Y.test = Y[test]
+```
+
+b).
+```{r}
+library(glmnet)
+
+grid = 10^seq(10,-2,length=100)
+ridge_mod = glmnet(x[train,],Y[train],alpha=0,lambda=grid)
+
+ridge_cv = cv.glmnet(x[train,], Y[train], alpha=0,nfolds = 10) # Ridge regression (alpha=0)
+plot(ridge_cv)
+
+```
+
+```{r}
+lambda_ridge_min = ridge_cv$lambda.min
+lambda_ridge_min
+```
+
+
+c).
+
+```{r}
+lambda_ridge_1se = ridge_cv$lambda.1se
+lambda_ridge_1se
+```
+
+d).
+
+```{r}
+#grid = 10^seq(10,-2,length=100)
+lasso_mod = glmnet(x[train,],Y[train],alpha=1,lambda=grid)
+
+lasso_cv = cv.glmnet(x[train,], Y[train], alpha=1,nfolds = 10) 
+plot(lasso_cv)
+```
+
+```{r}
+lambda_lasso_min = lasso_cv$lambda.min
+lambda_lasso_min 
+```
+
+
+e).
+
+```{r}
+lambda_lasso_1se = lasso_cv$lambda.1se
+lambda_lasso_1se
+```
+
+f).
+```{r}
+ridge_mod_min = glmnet(x[train,], Y[train], alpha=0, lambda=lambda_ridge_min)
+ridge_mod_1se = glmnet(x[train,], Y[train], alpha=0, lambda=lambda_ridge_1se)
+
+lasso_mod_min = glmnet(x[train,], Y[train], alpha=1, lambda=lambda_lasso_min)
+lasso_mod_1se = glmnet(x[train,], Y[train], alpha=1, lambda=lambda_lasso_1se)
+
+ridge_pred_min = predict(ridge_mod_min, s=lambda_ridge_min, newx=x[test,])
+ridge_pred_1se = predict(ridge_mod_1se, s=lambda_ridge_1se, newx=x[test,])
+
+lasso_pred_min = predict(lasso_mod_min, s=lambda_lasso_min, newx=x[test,])
+lasso_pred_1se = predict(lasso_mod_1se, s=lambda_lasso_1se, newx=x[test,])
+
+mse_ridge_min = mean((ridge_pred_min - Y.test)^2)
+mse_ridge_1se = mean((ridge_pred_1se - Y.test)^2)
+mse_lasso_min = mean((lasso_pred_min - Y.test)^2)
+mse_lasso_1se = mean((lasso_pred_1se - Y.test)^2)
+
+mse_ridge_min
+mse_ridge_1se
+mse_lasso_min
+mse_lasso_1se
+```
+
+
+
+g).
+
+```{r}
+coef(ridge_mod_min)
+coef(ridge_mod_1se)
+
+coef(lasso_mod_min)
+coef(lasso_mod_1se)
+```
+
+
+h)
+```{r}
+alpha = seq(0.01, 0.99, by=0.01)
+
+cv_error = rep(NA,length(alpha))
+
+for (i in 1:length(alpha)){
+  cv_elastic = cv.glmnet(x[train,], Y[train], alpha = alpha[i], lambda=grid,nfolds = 10)
+  cv_error[i] = min(cv_elastic$cvm)
+}
+enet_alpha = alpha[which.min(cv_error)]
+enet_alpha
+```
+
+```{r}
+elastic_cv_enet = cv.glmnet(x[train,], Y[train], alpha = enet_alpha,lambda=grid,nfolds = 10)
+elastic_cv_enet$lambda.min
+```
+
+
+i).
+
+```{r}
+enet_training = glmnet(x[train,],Y[train],alpha=enet_alpha,lambda = grid)
+enet_pred = predict(enet_training,s=elastic_cv_enet$lambda.min,newx=x[test,])
+mean((enet_pred-Y.test)^2)
+```
+J).
+We shoud look at the Model with the lowest MSE so in this case we could say the Ridge Model would be the best
+Model to select.
+
+K).
+To recommend features for an upcoming baseball player to focus on, you can analyze the coefficient estimates from the selected model (ridge, lasso, or elastic net) with the lowest test MSE. Features with larger absolute coefficient values are more influential in predicting salary
+
+##Q3
+
+a).
+```{r}
+library(ISLR2)
+
+bos = Boston
+
+pop_mea = mean(bos$medv)
+pop_mea
+```
+
+b).
+
+```{r}
+n <- length(Boston$medv)
+se_mu <- sd(Boston$medv) / sqrt(n)
+se_mu
+```
+
+
+```{r}
+summary(lm(medv~.,data=bos))
+```
+
+c).
+
+```{r}
+n = dim(bos)[1]
+B = 2000
+beta0 = rep(0,2000)
+for(b in 1:B){
+  index = sample(1:n,n,replace=TRUE)
+  bootsamp = bos[index,]
+  beta0[b] = mean(bootsamp$medv)
+}
+
+sqrt(sum((beta0-mean(beta0))^2)/(B-1))
+```
+
+
+d). I attempted this, with two loops, but didn't work. I utilized what was in class
+I thought I needed 2 lm models
+
+```{r}
+
+B_v = 1000
+m_v = 100
+n_v = dim(bos)[1]
+F_star = rep(0,B_v)
+med_v = rep(0,m_v)
+
+for(b_value in 1:B_v){
+  index_1 = sample(1:n,n,replace=TRUE)
+  bootsample_new=bos[index_1,]
+  for(i_v in 1:m_v){
+    index2 = sample(index_1,n,replace=TRUE)
+    bootsample2 = bos[index2,]
+    fit2 = lm(medv~.,data=bootsample2)
+  }
+}
+
+```
+
+
+e).
+
+```{r}
+muw_median <- median(bos$medv)
+muw_median
+```
+
+f).
+
+```{r}
+n = dim(bos)[1]
+B1 = 2000
+beta01 = rep(0,2000)
+for(b_value in 1:B){
+  index_v = sample(1:n,n,replace=TRUE)
+  bootsamp_v = bos[index_v,]
+  beta01[b_value] = median(bootsamp_v$medv)
+}
+
+sqrt(sum((beta01-median(beta01))^2)/(B1-1))
+```
+
+
+
+##Q4
+
+a).
+The probability that the jth observation is the first bootstrap sample is 1/n
+
+b).
+The probability that the jth observation is not the first bootstrap sample is 1 - 1/n
+P(not) = 1 - P(jth)
+
+c).
+
+d).
+n = 5
+1-(1/5)^5 = .672
+
+e).
+n = 100
+1 - (1/100)^100 = .634
+
+f).
+n = 10000
+1 - (1/10000)^10000 = .632
+
+g).
+
+
+```{r}
+j <- 10  
+n_max <- 100000
+
+prob <- numeric(n_max)
+
+for (n in 1:n_max) {
+  bootstrap_sample <- sample(1:n, size = n, replace = TRUE)
+  
+  prob[n] <- sum(bootstrap_sample == j) / n
+}
+
+plot(1:n_max, prob)
+```
+
+
+
+h).
+
+```{r}
+results <- rep(NA, 10000)
+for(i in 1:10000){
+results[i] <- sum(sample(1:100, rep=TRUE) == 5) > 0
+}
+mean(results)
+```
+
+we get that the probability that a bootstrap sample of size n
+contains the jth observation converges to 0.6431
+we are creating 10000 bootstrap samples, sampling from the set of integers from 1 to 100
