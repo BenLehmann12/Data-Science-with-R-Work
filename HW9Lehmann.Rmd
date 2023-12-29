@@ -1,0 +1,371 @@
+---
+title: "HW9Lehmann"
+output: pdf_document
+date: "2023-10-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+load_mnist <- function() {
+  load_image_file <- function(filename) {
+    ret = list()
+    f = file(filename,'rb')
+    readBin(f,'integer',n=1,size=4,endian='big')
+    ret$n = readBin(f,'integer',n=1,size=4,endian='big')
+    nrow = readBin(f,'integer',n=1,size=4,endian='big')
+    ncol = readBin(f,'integer',n=1,size=4,endian='big')
+    x = readBin(f,'integer',n=ret$n*nrow*ncol,size=1,signed=F)
+    ret$x = matrix(x, ncol=nrow*ncol, byrow=T)
+    close(f)
+    ret
+  }
+  load_label_file <- function(filename) {
+    f = file(filename,'rb')
+    readBin(f,'integer',n=1,size=4,endian='big')
+    n = readBin(f,'integer',n=1,size=4,endian='big')
+    y = readBin(f,'integer',n=n,size=1,signed=F)
+    close(f)
+    y
+  }
+  train <<- load_image_file('~/DataSci303/train-images-idx3-ubyte')
+  test <<- load_image_file('~/DataSci303/t10k-images-idx3-ubyte')
+  
+  train$y <<- load_label_file('~/DataSci303/train-labels-idx1-ubyte')
+  test$y <<- load_label_file('~/DataSci303/t10k-labels-idx1-ubyte')  
+  
+  return(
+    list(
+      train = train,
+      test = test
+    )
+  )
+}
+
+
+show_digit <- function(arr784, col=gray(12:1/12), ...) {
+  image(matrix(arr784, nrow=28)[,28:1], col=col, ...)
+}
+```
+
+
+```{r}
+mnist = load_mnist()
+train_data <- mnist$train
+test_data <- mnist$test
+
+dim(mnist$train$x)   #Dimension of train images
+
+table(mnist$train$y)  
+
+```
+
+
+```{r}
+index.train = sample(1:dim(train$x)[1], 3000, replace=FALSE)
+index.test = sample(1:dim(test$x)[1], 100, replace=FALSE)
+x_train = mnist$train$x[-index.test,]
+x_test = mnist$test$x[index.test,]
+y_train = mnist$train$y[-index.test]
+y_test = mnist$test$y[index.test]
+
+```
+
+
+```{r}
+library(class)
+K = c(1,5,7,9)
+cv_error = matrix(NA,10,4)
+testing_index = sample(1:dim(test$x)[1],100,replace=FALSE)
+for(i in 1:4){
+  k = K[i]
+  for(j in 1:10){
+    digit_index_train = sample(1:dim(train$x)[1],3000,replace=FALSE)
+    digit_index_test = sample(1:dim(test$x)[1],100,replace=FALSE)
+    knn_mod = knn(train$x[digit_index_train,],test$x[digit_index_test,],train$y[digit_index_train],k=k)
+    cv_error[j,i] = mean(test$y != knn_mod)
+  }
+}
+```
+
+
+```{r}
+optimal_K <- K[which.min(apply(cv_error, 2, mean))]
+optimal_K
+```
+
+
+```{r}
+knn_model = knn(train$x[digit_index_train,],test$x[digit_index_test,],train$y[digit_index_train],k=7)
+table(knn_model,test$y[digit_index_test])
+mean(test$y != knn_mod)
+```
+
+
+```{r}
+#library(MASS)
+#lda_mod = lda(test$y~test$x,data=test)
+
+```
+
+We get the error  Error in lda.default(x, grouping, ...)
+
+
+#Q2
+
+```{r}
+load_fashion <- function() {
+  load_image_file <- function(filename) {
+    ret = list()
+    f = file(filename,'rb')
+    readBin(f,'integer',n=1,size=4,endian='big')
+    ret$n = readBin(f,'integer',n=1,size=4,endian='big')
+    nrow = readBin(f,'integer',n=1,size=4,endian='big')
+    ncol = readBin(f,'integer',n=1,size=4,endian='big')
+    x = readBin(f,'integer',n=ret$n*nrow*ncol,size=1,signed=F)
+    ret$x = matrix(x, ncol=nrow*ncol, byrow=T)
+    close(f)
+    ret
+  }
+  load_label_file <- function(filename) {
+    f = file(filename,'rb')
+    readBin(f,'integer',n=1,size=4,endian='big')
+    n = readBin(f,'integer',n=1,size=4,endian='big')
+    y = readBin(f,'integer',n=n,size=1,signed=F)
+    close(f)
+    y
+  }
+  train <<- load_image_file('~/DataSci303/fashion_train-images-idx3-ubyte')
+  test <<- load_image_file('~/DataSci303/fashion_t10k-images-idx3-ubyte')
+  
+  train$y <<- load_label_file('~/DataSci303/fashion_train-labels-idx1-ubyte')
+  test$y <<- load_label_file('~/DataSci303/fashion_t10k-labels-idx1-ubyte')  
+  
+  return(
+    list(
+      train = train,
+      test = test
+    )
+  )
+}
+
+
+show_digit <- function(arr784, col=gray(12:1/12), ...) {
+  image(matrix(arr784, nrow=28)[,28:1], col=col, ...)
+}
+```
+
+
+```{r}
+fashion = load_fashion()
+train_images <- fashion$train$x
+
+# Display the first 5 observations
+par(mfrow=c(1, 5))  # Set up a 1x5 grid for plotting
+for (i in 1:5) {
+  show_digit(train_images[i, ], main = paste("Observation", i))
+}
+```
+
+
+b).
+
+
+```{r}
+library(class)
+K_val = c(1,5,7,9)
+cv_error_val = matrix(NA,10,4)
+testing_index_ = sample(1:dim(test$x)[1],100,replace=FALSE)
+for(i_v in 1:4){
+  k_i = K_val[i_v]
+  for(j_v in 1:10){
+    fashion_index_train = sample(1:dim(train$x)[1],3000,replace=FALSE)
+    fashion_index_test = sample(1:dim(test$x)[1],100,replace=FALSE)
+    new_knn= knn(train$x[fashion_index_train,],test$x[fashion_index_test,],train$y[fashion_index_train],k=k_i)
+    cv_error_val[j_v,i_v] = mean(test$y != new_knn)
+  }
+}
+new_optimal_K <- K_val[which.min(apply(cv_error_val, 2, mean))]
+new_optimal_K
+```
+
+```{r}
+fash_knn_model = knn(train$x[fashion_index_train,],test$x[fashion_index_test,],train$y[fashion_index_train],k=9)
+table(fash_knn_model,test$y[fashion_index_test])
+mean(test$y != fash_knn_model)
+```
+
+
+#Q3
+a) KNN does not do well in times when the number of dimensions in our data is very high. Data Points that are drawn from a probability distribution tend to not be close together and could violate the assumption of KNN
+
+b).
+i). To predict gender of an individual based on height and weight with 145 data points, I would tell the client to use the logistic regression for this problem.
+
+ii). Prediction of gender based on annual income and weekly working hour could make use of the logistic regression
+
+iii).Here there is a decision boundary, it is complicated and highly non linear I would use the KNN.
+
+#Q4
+a).When using KNN with K = 1, we classify the test observation by selecting the label of the closest training observation, the closest training observation is the one with the smallest distance, which is training observation 2. The label associated with this nearest neighbor is Y = 1.
+
+b).When using KNN with K = 3, we classify the test observation by considering the labels of the three nearest training observations.
+Training obervation 1 with a distance of 0.45
+Training observation 2 with a distance of 0.23
+Training observation 4 with a distance of 0.31 
+Training observation 5 with a distance of 0.57
+Among these three nearest neighbors, we have one observation with Y = 1 and two observations with Y = 0. Therefore, the majority class among the three nearest neighbors is Y = 0. So, the test observation would be classified as Y = 0 when K = 3.
+#Q5
+
+b).
+```{r}
+spam = read.csv("~/DataSci303/spambase.data",header=FALSE)
+y_or_n = table(spam$V58)
+```
+
+
+```{r}
+prop_spam = y_or_n[2] / sum(y_or_n)
+prop_not_spam = y_or_n[1] / sum(y_or_n)
+
+cat("Proportion of spam emails: ", prop_spam, "\n")
+cat("Proportion of non-spam emails: ", prop_not_spam, "\n")
+```
+
+
+b).
+
+```{r}
+set.seed(8)
+train_indices = sample(1:nrow(spam), nrow(spam)/2,replace=FALSE)  
+testing = (-train_indices)
+train_data = spam[train_indices, ]
+test_data = spam[-train_indices, ]
+```
+
+
+```{r}
+model <- glm(V58 ~ ., data = train_data, family = "binomial")
+predictions <- predict(model, newdata = test_data, type = "response")
+head(predictions, 10)
+```
+
+```{r}
+library(ROCR)
+
+predict_obj <- prediction(predictions, test_data$V58)
+#perform_obj <- performance(predict_obj, "tpr", "fpr")
+#plot(perform_obj)
+plot(performance(predict_obj,'tpr','fpr'))
+plot(performance(predict_obj,'tpr','fpr'),colorize=TRUE,print.cutoffs.at=seq(0,1,by=0.05), tzext.adj=c(-0.2,1.7))
+```
+
+c).
+
+```{r}
+glm_pred = rep(0,length(testing))
+glm_pred[predictions >0.5] = 1
+table(glm_pred,spam[testing,]$V58)
+```
+
+
+
+d).
+
+```{r}
+new_glm_pred = rep(0,length(testing))
+new_glm_pred[predictions <0.03] = 1
+table(new_glm_pred,spam[testing,]$V58)
+```
+
+e).
+
+```{r}
+library(MASS)
+
+lda_mod = lda(V58 ~., data = train_data)
+predictions_lda = predict(lda_mod, newdata = test_data)
+conf_matrix_lda = table(Actual = test_data$V58, Predicted = predictions_lda$class)
+conf_matrix_lda
+```
+
+```{r}
+
+predictions_lda <- predict(lda_mod, newdata = test_data, type = "response")
+predict_lda <- prediction(predictions_lda$posterior[,2], test_data$V58)
+plot(performance(predict_lda,'tpr','fpr'))
+plot(performance(predict_lda,'tpr','fpr'),colorize=TRUE,print.cutoffs.at=seq(0,1,by=0.05), tzext.adj=c(-0.2,1.7))
+```
+
+
+```{r}
+lda_pred = rep(0,length(testing))
+lda_values = as.numeric(predictions_lda$posterior[, 2])
+lda_pred[lda_values>0.5] = 1
+table(lda_pred,spam[testing,]$V58)
+```
+
+```{r}
+new_lda_pred = rep(0,length(testing))
+new_lda_values = as.numeric(predictions_lda$posterior[, 2])
+new_lda_pred[new_lda_values<0.03] = 1
+table(lda_pred,spam[testing,]$V58)
+```
+
+
+f)
+
+
+```{r}
+library(MASS)
+#qda = qda(V58 ~., data = train_data)
+#qda_predictions = predict(qda, newdata = test_data)
+#qda_table = table(Actual = test_data$V58, Predicted = qda_predictions)
+#qda_table
+```
+
+
+
+```{r}
+library(e1071)
+nb = naiveBayes(train_data[, -58], train_data[, 58])
+n_b_predictions =  predict(nb, test_data[, -58])
+n_bconfusion_matrix = table(Actual = test_data[, 58], Predicted = n_b_predictions)
+n_bconfusion_matrix
+
+```
+
+
+```{r}
+library(class)
+train_data_scaled <- scale(train_data[, -58])
+test_data_scaled <- scale(test_data[, -58])
+```
+
+
+
+```{r}
+K_new_v <- c(1,3,5,7)
+errors <- c()
+for (k_value in K_new_v) {
+  knn_pred <- knn(train_data_scaled, test_data_scaled, train_data$V58, k = k_value)
+  error_rate <- mean(knn_pred != test_data$V58)
+  errors <- c(errors, error_rate)
+}
+the_best_k <- K_new_v[which.min(errors)]
+the_best_k
+```
+
+```{r}
+spam_knn = knn(train_data_scaled, test_data_scaled, train_data$V58, k = 7)
+knn_table = table(Actual = test_data$V58, Predicted = spam_knn)
+knn_table
+knn_error_rate <- mean(spam_knn != test_data$V58)
+knn_error_rate
+```
+
+I would say I would go with KNN because of the low false negatives and false positives.
